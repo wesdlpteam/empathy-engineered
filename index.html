@@ -149,6 +149,9 @@ h1.q{
   cursor:pointer; color:var(--ink-soft);
 }
 .reel[data-locked="true"] .lockbtn{border-color:var(--gold); color:var(--ink); font-weight:600}
+/* greyed out while the reels are moving, so nobody taps Lock mid-spin and
+   silently loses the word they wanted */
+.lockbtn:disabled{opacity:.3; cursor:not-allowed}
 .reel.spinning .val{animation:blur .07s linear infinite alternate}
 @keyframes blur{from{transform:translateY(-2px); opacity:.55} to{transform:translateY(2px); opacity:1}}
 
@@ -269,13 +272,17 @@ h1.q{
 :root[data-theme="dark"] .sticker{color:#FFE9B5}
 :root[data-theme="light"] .sticker{color:#3A2C08}
 .sticker:hover{transform:rotate(-1.2deg) translateY(-2px); box-shadow:0 6px 14px -6px rgba(0,0,0,.5)}
-.sticker[aria-pressed="true"]{
-  background:var(--purple); border-color:var(--purple); transform:rotate(1.5deg);
-  box-shadow:0 5px 0 rgba(0,0,0,.25);
+/* Selected stickers are pinned to white on dark purple in BOTH themes. The
+   theme-scoped .sticker colour rules out-specify a plain [aria-pressed]
+   selector, so these have to match that specificity or the text stays dark
+   and a chosen sticker reads as a solid block on a projector. */
+:root .sticker[aria-pressed="true"],
+:root[data-theme="dark"] .sticker[aria-pressed="true"],
+:root[data-theme="light"] .sticker[aria-pressed="true"]{
+  background:#4F2759; border-color:#2E1536; color:#FFFFFF;
+  transform:rotate(1.5deg); box-shadow:0 5px 0 rgba(0,0,0,.25);
 }
-@media (prefers-color-scheme: dark){ .sticker[aria-pressed="true"]{color:#201428} }
-:root[data-theme="dark"] .sticker[aria-pressed="true"]{color:#201428}
-:root[data-theme="light"] .sticker[aria-pressed="true"]{color:#fff}
+:root .sticker[aria-pressed="true"]::after{opacity:.9}
 .sticker::after{content:"\26A0"; position:absolute; top:.4rem; right:.5rem; font-size:.8rem; opacity:.55}
 
 /* ============ PLATE ============ */
@@ -302,6 +309,13 @@ h1.q{
   transition:transform .12s;
 }
 .human:hover{transform:translateY(-2px)}
+/* Chips stay in place once used, greyed out, rather than leaving the list.
+   Removing them reflowed everything and the next tap landed on the wrong one. */
+.human[data-used="true"]{
+  opacity:.38; border-style:dashed; box-shadow:none;
+  text-decoration:line-through; cursor:pointer;
+}
+.human[data-used="true"]:hover{transform:none; opacity:.55}
 
 /* ============ LIVE LABEL ============ */
 .dock{position:sticky; top:1rem}
@@ -364,9 +378,15 @@ h1.q{
 }
 
 /* ============ NAV ============ */
+/* sticky so Back/Next never fall below the fold on a short laptop screen */
 .nav{
+  position:sticky; bottom:0; z-index:5;
+  background:var(--ground-2); border-top:2px solid var(--rule);
+  padding:.8rem clamp(1rem,3vw,2rem);
+}
+.nav-inner{
   display:flex; gap:.7rem; align-items:center; flex-wrap:wrap;
-  padding:1rem clamp(1rem,3vw,2rem) 2.5rem; max-width:1280px; margin:0 auto;
+  max-width:1280px; margin:0 auto;
 }
 .nav .hint{font-size:.85rem; color:var(--ink-soft)}
 
@@ -488,7 +508,7 @@ h1.q{
     <section class="step" data-step="4" aria-labelledby="h4x">
       <p class="eyebrow">Step 5 of 6</p>
       <h1 class="q" id="h4x">Best paired with</h1>
-      <p class="lede">A chatbot on its own is a pretty thin diet. Drag at least <b>three</b> humans and real-world things onto the plate, or just tap them.</p>
+      <p class="lede">A chatbot on its own is a pretty thin diet. Tap at least <b>three</b> humans and real-world things to put them on the plate, or drag them across. Tap one again to take it back off.</p>
       <div class="plate-wrap">
         <div class="human-tray" id="humanTray"></div>
         <div class="plate" id="plate"></div>
@@ -559,9 +579,11 @@ h1.q{
 </div>
 
 <div class="nav">
-  <button type="button" class="btn ghost" id="backBtn">Back</button>
-  <button type="button" class="btn" id="nextBtn">Next</button>
-  <span class="hint" id="navHint"></span>
+  <div class="nav-inner">
+    <button type="button" class="btn ghost" id="backBtn">Back</button>
+    <button type="button" class="btn" id="nextBtn">Next</button>
+    <span class="hint" id="navHint"></span>
+  </div>
 </div>
 
 <script>
@@ -587,9 +609,11 @@ var SLOGANS = [
 ];
 
 var INGREDIENTS = [
-  {id:"nwp",  name:"Next-word prediction", real:true, weight:0,
+  /* amount sets the starting quantity. These two make up the bulk of any
+     chatbot, so they start at "a lot" rather than the default "some". */
+  {id:"nwp",  name:"Next-word prediction", real:true, weight:0, amount:"a lot",
     note:"It works out the most likely next word, over and over. That is the engine."},
-  {id:"data", name:"Scraped training data", real:true, weight:0,
+  {id:"data", name:"Scraped training data", real:true, weight:0, amount:"a lot",
     note:"It was trained on an enormous pile of text written by people."},
   {id:"rate", name:"Human feedback ratings", real:true, weight:0,
     note:"People rated its answers, and it was tuned towards the ones they liked."},
@@ -678,17 +702,26 @@ function spin(){
   }
   var newSlogan = pick(SLOGANS);
 
+  function setLocksEnabled(on){
+    var lbs = document.querySelectorAll(".lockbtn");
+    for(var k=0;k<lbs.length;k++){ lbs[k].disabled = !on; }
+  }
+
   function land(){
     S.reels = targets; S.slogan = newSlogan; S.spun = true;
     var boxes = document.querySelectorAll(".reel");
     for(var k=0;k<boxes.length;k++){ boxes[k].classList.remove("spinning"); }
     renderReels(); updateLabel(); updateNav();
+    setLocksEnabled(true);
     $("spinBtn").disabled = false;
   }
 
   if(reduceMotion){ land(); return; }
 
   $("spinBtn").disabled = true;
+  /* locking mid-spin would be ignored, so grey the buttons out instead of
+     letting a student think they saved a word */
+  setLocksEnabled(false);
   var ticks = 0;
   var timer = setInterval(function(){
     ticks++;
@@ -807,7 +840,7 @@ function place(id, bin, tileEl){
 
   S.placed[id] = bin;
   if(bin === "mix"){
-    if(!S.amounts[id]) S.amounts[id] = "some";
+    if(!S.amounts[id]) S.amounts[id] = ing.amount || "some";
     /* remember the order they were added, so the amount controls can hold
        still while only the label reorders by quantity */
     if(S.mixOrder.indexOf(id) === -1) S.mixOrder.push(id);
@@ -972,31 +1005,41 @@ function renderStickers(){
 }
 
 /* ---------- step 5 ---------- */
+/* Every chip is rendered once and never leaves the list. Used ones grey out
+   in place. Taking them out of the list reflowed everything, so a quick
+   second tap landed on the wrong chip. */
+var humanPaint = {};
+
 function renderHumans(){
   var tray = $("humanTray");
   tray.innerHTML = "";
-  var shown = 0;
+  humanPaint = {};
   HUMANS.forEach(function(h){
-    if(S.pairs.indexOf(h) > -1) return;
-    shown++;
     var b = document.createElement("button");
     b.type = "button";
     b.className = "human";
-    b.draggable = true;
     b.textContent = h;
+
+    function paint(){
+      var on = S.pairs.indexOf(h) > -1;
+      b.setAttribute("data-used", on ? "true" : "false");
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.setAttribute("aria-label", on
+        ? h + ", on the plate. Tap to take it off."
+        : h + ". Tap to put it on the plate.");
+      b.draggable = !on;
+    }
+    humanPaint[h] = paint;
+    paint();
+
     b.addEventListener("dragstart", function(ev){
+      if(S.pairs.indexOf(h) > -1){ ev.preventDefault(); return; }
       ev.dataTransfer.setData("text/plain", h);
       ev.dataTransfer.effectAllowed = "move";
     });
-    b.addEventListener("click", function(){ addPair(h); });
+    b.addEventListener("click", function(){ togglePair(h); });
     tray.appendChild(b);
   });
-  if(!shown){
-    var p = document.createElement("p");
-    p.className = "lede"; p.style.margin = "0";
-    p.textContent = "Everything is on the plate.";
-    tray.appendChild(p);
-  }
 }
 
 function renderPlate(){
@@ -1016,22 +1059,26 @@ function renderPlate(){
     var rm = document.createElement("button");
     rm.type = "button"; rm.innerHTML = "&times;";
     rm.setAttribute("aria-label","Take " + h + " off the plate");
-    rm.addEventListener("click", function(){
-      S.pairs.splice(S.pairs.indexOf(h), 1);
-      renderPlate(); renderHumans(); updateLabel(); updateNav();
-    });
+    rm.addEventListener("click", function(){ togglePair(h); });
     sp.appendChild(t); sp.appendChild(rm);
     plate.appendChild(sp);
   });
 }
 
-function addPair(h){
-  if(S.pairs.indexOf(h) > -1) return;
-  S.pairs.push(h);
-  renderPlate(); renderHumans(); updateLabel(); updateNav();
+function togglePair(h){
+  var i = S.pairs.indexOf(h);
+  if(i > -1) S.pairs.splice(i, 1); else S.pairs.push(h);
+  if(humanPaint[h]) humanPaint[h]();
+  renderPlate(); updateLabel(); updateNav();
   $("pairMsg").textContent = S.pairs.length < 3
     ? "Add at least three. You have " + S.pairs.length + "."
     : S.pairs.length + " on the plate. That is a much better diet.";
+}
+
+/* used by the drop target, which should only ever add */
+function addPair(h){
+  if(!h || S.pairs.indexOf(h) > -1) return;
+  togglePair(h);
 }
 
 $("plate").addEventListener("dragover", function(ev){
