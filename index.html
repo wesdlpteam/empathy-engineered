@@ -1,0 +1,1522 @@
+<title>What's Really In This Chatbot?</title>
+
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --purple:#4F2759;
+  --purple-lift:#6B3878;
+  --gold:#C59F40;
+  --gold-ink:#7A5012;
+  --ink:#1A1A1A;
+  --ink-soft:#55505A;
+  --paper:#FFFFFF;
+  --ground:#EFEDED;
+  --ground-2:#E6E2DD;
+  --rule:#DAD7D1;
+  --tint-green:#CFE9D3;
+  --tint-rose:#FDAFBD;
+  --tint-amber:#FFEDBC;
+  --tint-blue:#CBDAFF;
+  --ok:#2E7D1E;
+  --no:#A8201F;
+  --label-ink:#000000;
+  --label-paper:#FFFFFF;
+  --shadow:0 2px 0 rgba(43,40,31,.14), 0 12px 28px -12px rgba(43,40,31,.45);
+  --font-ui:"Graphik","Segoe UI",system-ui,-apple-system,sans-serif;
+  --font-pack:"Arial Black","Avenir Black","Helvetica Neue",Impact,sans-serif;
+  --font-panel:"Helvetica Neue",Helvetica,Arial,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --ink:#F2EFF3; --ink-soft:#B6AEBD;
+    --paper:#2A2430; --ground:#1C1821; --ground-2:#241F2B; --rule:#413A48;
+    --purple:#C9A2D6; --purple-lift:#DCBDE6; --gold:#E0BE63;
+    --tint-green:#2C4330; --tint-rose:#4B2630; --tint-amber:#473A1C; --tint-blue:#27304B;
+    --ok:#8FD97C; --no:#F08C8B;
+    --shadow:0 2px 0 rgba(0,0,0,.5), 0 16px 34px -14px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#F2EFF3; --ink-soft:#B6AEBD;
+  --paper:#2A2430; --ground:#1C1821; --ground-2:#241F2B; --rule:#413A48;
+  --purple:#C9A2D6; --purple-lift:#DCBDE6; --gold:#E0BE63;
+  --tint-green:#2C4330; --tint-rose:#4B2630; --tint-amber:#473A1C; --tint-blue:#27304B;
+  --ok:#8FD97C; --no:#F08C8B;
+  --shadow:0 2px 0 rgba(0,0,0,.5), 0 16px 34px -14px rgba(0,0,0,.8);
+}
+:root[data-theme="light"]{
+  --ink:#1A1A1A; --ink-soft:#55505A;
+  --paper:#FFFFFF; --ground:#EFEDED; --ground-2:#E6E2DD; --rule:#DAD7D1;
+  --purple:#4F2759; --purple-lift:#6B3878; --gold:#C59F40;
+  --tint-green:#CFE9D3; --tint-rose:#FDAFBD; --tint-amber:#FFEDBC; --tint-blue:#CBDAFF;
+  --ok:#2E7D1E; --no:#A8201F;
+  --shadow:0 2px 0 rgba(43,40,31,.14), 0 12px 28px -12px rgba(43,40,31,.45);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--font-ui); font-size:16px; line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--purple); outline-offset:2px; border-radius:4px}
+
+/* ============ SHELL ============ */
+.topbar{
+  background:#4F2759; color:#fff;
+  padding:.7rem clamp(1rem,4vw,2rem);
+  display:flex; align-items:center; gap:1rem; flex-wrap:wrap;
+}
+@media (prefers-color-scheme: dark){ .topbar{background:#2E1536} }
+:root[data-theme="dark"] .topbar{background:#2E1536}
+:root[data-theme="light"] .topbar{background:#4F2759}
+.topbar .mark{
+  font-family:var(--font-pack); letter-spacing:-.02em; font-size:1.05rem;
+  text-transform:uppercase;
+}
+.topbar .mark em{color:#E0BE63; font-style:normal}
+.topbar .unit{
+  margin-left:auto; font-size:.72rem; letter-spacing:.14em;
+  text-transform:uppercase; opacity:.8;
+}
+
+/* progress rail */
+.rail{
+  display:flex; gap:.3rem; padding:.6rem clamp(1rem,4vw,2rem);
+  background:var(--ground-2); border-bottom:1px solid var(--rule);
+  overflow-x:auto; scrollbar-width:thin;
+}
+.rail button{
+  flex:1 0 auto; min-width:94px; background:none; border:0; cursor:pointer;
+  padding:.35rem .5rem .45rem; text-align:left; border-top:4px solid var(--rule);
+  color:var(--ink-soft); font-size:.74rem; letter-spacing:.04em;
+  text-transform:uppercase; transition:color .2s, border-color .2s;
+}
+.rail button .n{display:block; font-family:var(--font-pack); font-size:.95rem; letter-spacing:-.01em}
+.rail button[data-state="done"]{border-top-color:var(--gold); color:var(--ink)}
+.rail button[aria-current="true"]{border-top-color:var(--purple); color:var(--purple)}
+.rail button:disabled{cursor:not-allowed; opacity:.45}
+
+.stage{
+  display:grid; gap:clamp(1rem,3vw,2rem);
+  grid-template-columns:minmax(0,1.15fr) minmax(300px,.85fr);
+  padding:clamp(1rem,3vw,2rem); align-items:start;
+  max-width:1280px; margin:0 auto;
+}
+@media (max-width:900px){ .stage{grid-template-columns:1fr} }
+
+/* ============ WORK PANEL ============ */
+.work{min-width:0}
+.step{display:none; animation:rise .35s ease both}
+.step[data-active="true"]{display:block}
+@keyframes rise{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+
+.eyebrow{
+  font-size:.72rem; letter-spacing:.18em; text-transform:uppercase;
+  color:#7A5012; font-weight:600; margin:0 0 .35rem;
+}
+@media (prefers-color-scheme: dark){ .eyebrow{color:#E0BE63} }
+:root[data-theme="dark"] .eyebrow{color:#E0BE63}
+:root[data-theme="light"] .eyebrow{color:#7A5012}
+
+h1.q{
+  font-family:var(--font-pack); letter-spacing:-.03em; line-height:1.02;
+  font-size:clamp(1.7rem,4.6vw,2.6rem); margin:0 0 .5rem; text-wrap:balance;
+}
+.lede{margin:0 0 1.4rem; max-width:58ch; color:var(--ink-soft)}
+
+/* ============ SLOT MACHINE ============ */
+.slots{
+  background:var(--paper); border:2px solid var(--ink); border-radius:var(--r);
+  box-shadow:var(--shadow); padding:1rem; margin-bottom:1rem;
+}
+.reel-row{display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem}
+.reel{
+  background:var(--ground-2); border:2px solid var(--rule); border-radius:8px;
+  padding:.9rem .4rem; text-align:center; overflow:hidden; position:relative;
+}
+.reel[data-locked="true"]{border-color:var(--gold); background:var(--tint-amber)}
+.reel .val{
+  font-family:var(--font-pack); font-size:clamp(1rem,3.4vw,1.5rem);
+  letter-spacing:-.02em; display:block; min-height:1.2em;
+}
+:root[data-theme="light"] .reel[data-locked="true"] .val{color:#7A5012}
+.reel .lockbtn{
+  margin-top:.5rem; background:none; border:1.5px solid var(--rule); border-radius:999px;
+  padding:.18rem .6rem; font-size:.68rem; letter-spacing:.1em; text-transform:uppercase;
+  cursor:pointer; color:var(--ink-soft);
+}
+.reel[data-locked="true"] .lockbtn{border-color:var(--gold); color:var(--ink); font-weight:600}
+.reel.spinning .val{animation:blur .07s linear infinite alternate}
+@keyframes blur{from{transform:translateY(-2px); opacity:.55} to{transform:translateY(2px); opacity:1}}
+
+.slogan-slot{
+  margin-top:.6rem; background:var(--tint-blue); border:2px dashed var(--rule);
+  border-radius:8px; padding:.8rem; text-align:center; font-size:1.02rem; font-style:italic;
+  min-height:3.2em; display:flex; align-items:center; justify-content:center;
+}
+
+/* ============ BUTTONS ============ */
+.btn{
+  background:var(--purple); color:#fff; border:0; border-radius:999px;
+  padding:.75rem 1.5rem; font-weight:600; cursor:pointer;
+  box-shadow:0 3px 0 rgba(0,0,0,.22); transition:transform .12s, box-shadow .12s;
+}
+@media (prefers-color-scheme: dark){ .btn{color:#201428} }
+:root[data-theme="dark"] .btn{color:#201428}
+:root[data-theme="light"] .btn{color:#fff}
+.btn:hover{transform:translateY(-2px); box-shadow:0 5px 0 rgba(0,0,0,.22)}
+.btn:active{transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,.22)}
+.btn.big{font-size:1.15rem; padding:.9rem 2.2rem; font-family:var(--font-pack); letter-spacing:.02em}
+.btn.ghost{background:none; color:var(--purple); border:2px solid var(--purple); box-shadow:none}
+.btn.ghost:hover{background:var(--purple); color:var(--paper)}
+.btn:disabled{opacity:.4; cursor:not-allowed; transform:none; box-shadow:none}
+.btn[hidden]{display:none}
+
+/* ============ SORTING BOARD ============ */
+.bins{display:grid; grid-template-columns:1fr 1fr; gap:.7rem; margin-bottom:1rem}
+.bin{
+  border:3px dashed var(--rule); border-radius:var(--r); padding:.7rem;
+  min-height:140px; transition:background .2s, border-color .2s;
+}
+.bin[data-over="true"]{border-style:solid; border-color:var(--purple)}
+.bin.mix{background:var(--tint-green)}
+.bin.none{background:var(--tint-rose)}
+.bin h3{
+  margin:0 0 .5rem; font-family:var(--font-pack); font-size:.9rem;
+  letter-spacing:.02em; text-transform:uppercase;
+}
+:root[data-theme="light"] .bin.mix h3{color:#1F4A22}
+:root[data-theme="light"] .bin.none h3{color:#8F1D2E}
+.bin ul{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:.35rem}
+.bin li{
+  background:var(--paper); border:1.5px solid var(--ink); border-radius:999px;
+  padding:.22rem .6rem; font-size:.84rem; display:flex; align-items:center; gap:.4rem;
+  animation:pop .25s ease both;
+}
+@keyframes pop{from{transform:scale(.6); opacity:0} to{transform:none; opacity:1}}
+.bin li button{background:none; border:0; cursor:pointer; font-size:.95rem; line-height:1; padding:0 .1rem; color:var(--ink-soft)}
+
+.tray{display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.9rem}
+.tile{
+  background:var(--paper); border:2px solid var(--ink); border-radius:8px;
+  padding:.45rem .5rem .4rem .7rem; display:flex; align-items:center; gap:.6rem;
+  box-shadow:0 2px 0 rgba(0,0,0,.18); cursor:grab;
+}
+.tile[data-shake="true"]{animation:shake .4s}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-7px) rotate(-2deg)}40%{transform:translateX(7px) rotate(2deg)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.tile .name{font-size:.9rem; font-weight:500}
+.tile .acts{display:flex; gap:.25rem}
+.tile .acts button{
+  border:1.5px solid var(--rule); background:var(--ground-2); border-radius:6px;
+  padding:.2rem .45rem; font-size:.68rem; letter-spacing:.06em; text-transform:uppercase;
+  cursor:pointer; white-space:nowrap;
+}
+.tile .acts button.toMix:hover{background:var(--tint-green); border-color:var(--ok)}
+.tile .acts button.toNone:hover{background:var(--tint-rose); border-color:var(--no)}
+
+.callout{
+  background:var(--paper); border:2px solid var(--ink); border-radius:8px;
+  box-shadow:0 2px 0 rgba(0,0,0,.18);
+  padding:.65rem .9rem; margin:.2rem 0 1rem; font-size:.93rem;
+}
+.callout b{font-family:var(--font-pack); letter-spacing:-.01em}
+.callout:empty{display:none}
+
+/* ============ AMOUNT CHIPS ============ */
+.amounts{display:flex; flex-direction:column; gap:.5rem; margin-bottom:1rem}
+.amount-row{
+  display:flex; align-items:center; gap:.7rem; background:var(--paper);
+  border:2px solid var(--ink); border-radius:8px; padding:.5rem .7rem;
+  box-shadow:0 2px 0 rgba(0,0,0,.14);
+}
+.amount-row .nm{flex:1; font-weight:500; font-size:.94rem}
+.amount-row .cyc{
+  border:2px solid var(--ink); border-radius:999px; cursor:pointer;
+  padding:.3rem 1rem; font-weight:700; font-size:.82rem; letter-spacing:.06em;
+  text-transform:uppercase; min-width:112px; background:var(--ground-2);
+}
+.amount-row .cyc[data-v="a lot"]{background:var(--tint-rose)}
+.amount-row .cyc[data-v="some"]{background:var(--tint-amber)}
+.amount-row .cyc[data-v="a trace"]{background:var(--tint-green)}
+:root[data-theme="light"] .amount-row .cyc[data-v="a lot"]{color:#8F1D2E}
+:root[data-theme="light"] .amount-row .cyc[data-v="some"]{color:#7A5012}
+:root[data-theme="light"] .amount-row .cyc[data-v="a trace"]{color:#1F4A22}
+
+.stars{
+  display:flex; align-items:center; gap:.8rem; background:var(--paper);
+  border:3px solid var(--ink); border-radius:var(--r); padding:.8rem 1rem; margin-bottom:1rem;
+  box-shadow:var(--shadow);
+}
+.stars .pips{font-size:1.6rem; letter-spacing:.1em; color:#B88A1E; line-height:1}
+@media (prefers-color-scheme: dark){ .stars .pips{color:#E0BE63} }
+:root[data-theme="dark"] .stars .pips{color:#E0BE63}
+:root[data-theme="light"] .stars .pips{color:#B88A1E}
+.stars .txt{font-size:.88rem; color:var(--ink-soft)}
+.stars .txt b{display:block; color:var(--ink); font-family:var(--font-pack); font-size:.95rem}
+
+/* ============ STICKERS ============ */
+.stickers{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:.6rem; margin-bottom:1rem}
+.sticker{
+  text-align:left; cursor:pointer; background:var(--tint-amber); color:#3A2C08;
+  border:2.5px solid var(--ink); border-radius:6px; padding:.65rem 1.6rem .65rem .8rem;
+  font-size:.88rem; font-weight:600; line-height:1.3; position:relative;
+  transition:transform .14s, box-shadow .14s;
+}
+@media (prefers-color-scheme: dark){ .sticker{color:#FFE9B5} }
+:root[data-theme="dark"] .sticker{color:#FFE9B5}
+:root[data-theme="light"] .sticker{color:#3A2C08}
+.sticker:hover{transform:rotate(-1.2deg) translateY(-2px); box-shadow:0 6px 14px -6px rgba(0,0,0,.5)}
+.sticker[aria-pressed="true"]{
+  background:var(--purple); border-color:var(--purple); transform:rotate(1.5deg);
+  box-shadow:0 5px 0 rgba(0,0,0,.25);
+}
+@media (prefers-color-scheme: dark){ .sticker[aria-pressed="true"]{color:#201428} }
+:root[data-theme="dark"] .sticker[aria-pressed="true"]{color:#201428}
+:root[data-theme="light"] .sticker[aria-pressed="true"]{color:#fff}
+.sticker::after{content:"\26A0"; position:absolute; top:.4rem; right:.5rem; font-size:.8rem; opacity:.55}
+
+/* ============ PLATE ============ */
+.plate-wrap{display:grid; grid-template-columns:1fr 210px; gap:1rem; margin-bottom:1rem}
+@media (max-width:620px){ .plate-wrap{grid-template-columns:1fr} }
+.plate{
+  border:4px solid var(--ink); border-radius:50%; aspect-ratio:1; background:var(--paper);
+  display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:.3rem;
+  padding:1.5rem; align-content:center; box-shadow:var(--shadow);
+  transition:border-color .2s, background .2s;
+}
+.plate[data-over="true"]{border-color:var(--purple); background:var(--tint-green)}
+.plate .empty{font-size:.8rem; color:var(--ink-soft); text-align:center; line-height:1.4}
+.plate span.srv{
+  background:var(--tint-green); border:1.5px solid var(--ink); border-radius:999px;
+  padding:.18rem .5rem; font-size:.74rem; animation:pop .25s ease both;
+}
+:root[data-theme="light"] .plate span.srv{color:#1F4A22}
+.plate span.srv button{background:none;border:0;cursor:pointer;padding:0 0 0 .25rem;color:inherit}
+.human-tray{display:flex; flex-wrap:wrap; gap:.45rem; align-content:flex-start}
+.human{
+  background:var(--paper); border:2px solid var(--ink); border-radius:999px;
+  padding:.35rem .8rem; font-size:.85rem; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.18);
+  transition:transform .12s;
+}
+.human:hover{transform:translateY(-2px)}
+
+/* ============ LIVE LABEL ============ */
+.dock{position:sticky; top:1rem}
+@media (max-width:900px){ .dock{position:static} }
+.label-shell{position:relative}
+.label{
+  background:var(--label-paper); color:var(--label-ink);
+  border:3px solid #000; border-radius:4px;
+  box-shadow:var(--shadow); font-family:var(--font-panel);
+  transform:rotate(-.4deg); overflow:hidden;
+}
+.label .front{
+  background:#4F2759; color:#fff; padding:.9rem 1rem 1rem; text-align:center;
+  border-bottom:8px solid #000;
+}
+.label .front .pname{
+  font-family:var(--font-pack); font-size:clamp(1.3rem,3.4vw,1.8rem);
+  letter-spacing:-.035em; line-height:1; text-transform:uppercase; display:block;
+  word-break:break-word;
+}
+.label .front .pslog{display:block; margin-top:.4rem; font-size:.84rem; font-style:italic; opacity:.95}
+.label .front .waiting{opacity:.7; letter-spacing:.04em}
+
+.panel{padding:.5rem .8rem .9rem}
+.panel .hd{
+  font-family:var(--font-pack); font-size:1.05rem; letter-spacing:-.02em;
+  text-transform:uppercase; margin:.1rem 0;
+}
+.panel .rule-thick{border:0; border-top:8px solid #000; margin:.25rem 0}
+.panel .rule-mid{border:0; border-top:4px solid #000; margin:.25rem 0}
+.panel .sect{font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; font-weight:700; margin:.45rem 0 .15rem}
+.panel .ing{display:flex; justify-content:space-between; gap:.6rem; font-size:.82rem; padding:.1rem 0}
+.panel .ing .amt{font-weight:700; white-space:nowrap}
+.panel .plain{font-size:.82rem; margin:.1rem 0; line-height:1.35}
+.panel .none-list{font-size:.82rem; font-weight:700; margin:.15rem 0; line-height:1.35}
+.panel .warn{font-size:.78rem; margin:.2rem 0; padding-left:1.1rem; position:relative; line-height:1.3}
+.panel .warn::before{content:"!"; position:absolute; left:.1rem; font-weight:900; font-family:var(--font-pack)}
+.panel .empty{font-size:.78rem; font-style:italic; color:#777; margin:.2rem 0}
+.panel .starline{display:flex; align-items:center; justify-content:space-between; gap:.5rem; font-size:.8rem; font-weight:700}
+.panel .starline .pip{color:#B88A1E; font-size:1.1rem; letter-spacing:.08em}
+.label.locked{animation:thunk .5s ease}
+@keyframes thunk{0%{transform:rotate(-.4deg) scale(1)}35%{transform:rotate(.6deg) scale(1.02)}100%{transform:rotate(-.4deg) scale(1)}}
+
+.barcode{display:flex; align-items:flex-end; gap:1.5px; height:42px; margin:.5rem 0 .2rem}
+.barcode i{background:#000; display:block; height:100%}
+.barcode-no{font-size:.64rem; letter-spacing:.3em; text-align:center; margin:0}
+
+.stamp{
+  position:absolute; right:-4px; bottom:14px; transform:rotate(-13deg);
+  border:4px double #9A7415; color:#9A7415; border-radius:8px;
+  padding:.3rem .7rem; font-family:var(--font-pack); font-size:.72rem;
+  letter-spacing:.06em; text-transform:uppercase; text-align:center; line-height:1.15;
+  background:rgba(255,255,255,.82); pointer-events:none;
+}
+.stamp[hidden]{display:none}
+
+.dock-note{
+  font-size:.74rem; color:var(--ink-soft); text-align:center; margin:.6rem 0 0;
+  letter-spacing:.08em; text-transform:uppercase;
+}
+
+/* ============ NAV ============ */
+.nav{
+  display:flex; gap:.7rem; align-items:center; flex-wrap:wrap;
+  padding:1rem clamp(1rem,3vw,2rem) 2.5rem; max-width:1280px; margin:0 auto;
+}
+.nav .hint{font-size:.85rem; color:var(--ink-soft)}
+
+/* ============ FINAL ============ */
+.final-grid{display:grid; gap:1rem}
+.recap{background:var(--paper); border:2px solid var(--rule); border-radius:var(--r); padding:1rem}
+.recap h3{margin:0 0 .3rem; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--purple)}
+.recap p{margin:0 0 .9rem; font-size:.95rem}
+.recap p:last-child{margin-bottom:0}
+.actions{display:flex; gap:.7rem; flex-wrap:wrap}
+
+.saveout{
+  margin-top:1rem; background:var(--paper); border:2px solid var(--ink);
+  border-radius:var(--r); padding:1rem; text-align:center;
+}
+.saveout[hidden]{display:none}
+.saveout img{max-width:100%; height:auto; border:1px solid var(--rule); display:block; margin:0 auto}
+.saveout .how{font-size:.88rem; margin:.8rem 0 0; color:var(--ink-soft)}
+.saveout .dl{
+  display:inline-block; margin-top:.7rem; color:var(--purple);
+  font-weight:600; text-underline-offset:3px;
+}
+
+/* keep the label's ink and colour blocks when printing, otherwise the
+   purple header and the barcode come out blank on most browsers */
+.label, .label *, .stamp{
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+@media print{
+  .topbar,.rail,.nav,.work,.dock-note,.saveout{display:none}
+  .stage{display:block; padding:0}
+  .dock{position:static}
+  body{background:#fff}
+  .label{transform:none; box-shadow:none; max-width:420px; margin:0 auto}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms; transition-duration:.001ms}
+}
+</style>
+
+<header class="topbar">
+  <span class="mark">What's <em>really</em> in this chatbot?</span>
+  <span class="unit">Empathy Engineered &middot; Digital Life</span>
+</header>
+
+<nav class="rail" id="rail" aria-label="Activity steps"></nav>
+
+<div class="stage">
+  <div class="work">
+
+    <section class="step" data-step="0" data-active="true" aria-labelledby="h0">
+      <p class="eyebrow">Step 1 of 6</p>
+      <h1 class="q" id="h0">Invent the product</h1>
+      <p class="lede">Every chatbot gets a shiny name and a promise on the front of the box. Spin until you get one that sounds like something a company would actually try to sell you.</p>
+
+      <div class="slots">
+        <div class="reel-row">
+          <div class="reel" data-reel="0" data-locked="false">
+            <span class="val" id="r0">&nbsp;</span>
+            <button type="button" class="lockbtn" data-lock="0" aria-pressed="false">Lock</button>
+          </div>
+          <div class="reel" data-reel="1" data-locked="false">
+            <span class="val" id="r1">&nbsp;</span>
+            <button type="button" class="lockbtn" data-lock="1" aria-pressed="false">Lock</button>
+          </div>
+          <div class="reel" data-reel="2" data-locked="false">
+            <span class="val" id="r2">&nbsp;</span>
+            <button type="button" class="lockbtn" data-lock="2" aria-pressed="false">Lock</button>
+          </div>
+        </div>
+        <div class="slogan-slot" id="sloganSlot">Tap spin to get a slogan</div>
+      </div>
+
+      <button type="button" class="btn big" id="spinBtn">Spin</button>
+      <p class="lede" style="margin-top:.9rem;font-size:.88rem">Keep a word you like by tapping <b>Lock</b> under it, then spin again for the rest.</p>
+    </section>
+
+    <section class="step" data-step="1" aria-labelledby="h1x">
+      <p class="eyebrow">Step 2 of 6</p>
+      <h1 class="q" id="h1x">Sort the ingredients</h1>
+      <p class="lede">Drag each one into a bin, or use the two buttons on the tile. Some of these are <b>not</b> in a chatbot, no matter how it sounds when you talk to it.</p>
+
+      <div class="bins">
+        <div class="bin mix" data-bin="mix">
+          <h3>In the mix</h3>
+          <ul id="binMix"></ul>
+        </div>
+        <div class="bin none" data-bin="none">
+          <h3>Contains no</h3>
+          <ul id="binNone"></ul>
+        </div>
+      </div>
+
+      <div class="callout" id="sortMsg" role="status" aria-live="polite"></div>
+      <div class="tray" id="tray"></div>
+    </section>
+
+    <section class="step" data-step="2" aria-labelledby="h2x">
+      <p class="eyebrow">Step 3 of 6</p>
+      <h1 class="q" id="h2x">How much of each?</h1>
+      <p class="lede">Real labels list ingredients from most to least. Tap a button to change the amount, then watch your label reorder itself and the rating move.</p>
+
+      <div class="stars">
+        <span class="pips" id="starPips" aria-hidden="true">&#9734;&#9734;&#9734;&#9734;&#9734;</span>
+        <span class="txt"><b id="starTitle">Wellbeing rating</b><span id="starWhy">Set your amounts below.</span></span>
+      </div>
+
+      <div class="amounts" id="amounts"></div>
+    </section>
+
+    <section class="step" data-step="3" aria-labelledby="h3x">
+      <p class="eyebrow">Step 4 of 6</p>
+      <h1 class="q" id="h3x">Slap on the warnings</h1>
+      <p class="lede">Peel off at least <b>two</b> warning stickers and stick them on your packet. Tap one again to take it off.</p>
+      <div class="stickers" id="stickers"></div>
+      <div class="callout" id="warnMsg" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="step" data-step="4" aria-labelledby="h4x">
+      <p class="eyebrow">Step 5 of 6</p>
+      <h1 class="q" id="h4x">Best paired with</h1>
+      <p class="lede">A chatbot on its own is a pretty thin diet. Drag at least <b>three</b> humans and real-world things onto the plate, or just tap them.</p>
+      <div class="plate-wrap">
+        <div class="human-tray" id="humanTray"></div>
+        <div class="plate" id="plate"></div>
+      </div>
+      <div class="callout" id="pairMsg" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="step" data-step="5" aria-labelledby="h5x">
+      <p class="eyebrow">Step 6 of 6</p>
+      <h1 class="q" id="h5x">Your packet is finished</h1>
+      <p class="lede">Here is everything you decided. The label beside this is yours, barcode and all.</p>
+      <div class="final-grid">
+        <div class="recap" id="recap"></div>
+        <div class="actions">
+          <button type="button" class="btn" id="saveBtn">Turn my label into a picture</button>
+          <button type="button" class="btn ghost" id="printBtn">Print it</button>
+          <button type="button" class="btn ghost" id="resetBtn">Start a new packet</button>
+        </div>
+        <div class="saveout" id="saveOut" hidden></div>
+      </div>
+    </section>
+
+  </div>
+
+  <aside class="dock" aria-label="Your label, updating live">
+    <div class="label-shell">
+      <div class="label" id="label">
+        <div class="front">
+          <span class="pname" id="lblName">Your chatbot</span>
+          <span class="pslog" id="lblSlogan"><span class="waiting">slogan pending</span></span>
+        </div>
+        <div class="panel">
+          <h2 class="hd">What's inside</h2>
+          <hr class="rule-thick">
+
+          <p class="sect">Ingredients, most first</p>
+          <div id="lblIng"><p class="empty">Nothing sorted yet.</p></div>
+          <hr class="rule-mid">
+
+          <p class="sect">Contains no</p>
+          <div id="lblNone"><p class="empty">Nothing ruled out yet.</p></div>
+          <hr class="rule-mid">
+
+          <p class="sect">Wellbeing rating</p>
+          <div class="starline"><span id="lblStarWord">Not rated</span><span class="pip" id="lblStars"></span></div>
+          <hr class="rule-mid">
+
+          <p class="sect">Serving suggestion</p>
+          <p class="plain">Brainstorming, practising a language, rehearsing a hard conversation. Not for the heavy stuff.</p>
+          <hr class="rule-mid">
+
+          <p class="sect">Warnings</p>
+          <div id="lblWarn"><p class="empty">No warnings yet.</p></div>
+          <hr class="rule-mid">
+
+          <p class="sect">Best paired with</p>
+          <div id="lblPair"><p class="empty">Nothing on the plate yet.</p></div>
+          <hr class="rule-thick">
+
+          <div class="barcode" id="barcode" aria-hidden="true"></div>
+          <p class="barcode-no" id="barcodeNo">0 000000 000000</p>
+        </div>
+      </div>
+      <div class="stamp" id="stamp" hidden>Approved by<br>nobody</div>
+    </div>
+    <p class="dock-note">Your label, building live</p>
+  </aside>
+</div>
+
+<div class="nav">
+  <button type="button" class="btn ghost" id="backBtn">Back</button>
+  <button type="button" class="btn" id="nextBtn">Next</button>
+  <span class="hint" id="navHint"></span>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var REELS = [
+  ["Chatty","Buddy","Sage","Echo","Pally","Nova","Kindly","Mira","Cosy","Bestie"],
+  ["Bot","Mate","Mind","Pal","Friend","Core","Heart","Chat","Soul","Ear"],
+  ["9000","Pro","Ultra","X","Plus","AI","2.0","Max","Prime","Infinity"]
+];
+var SLOGANS = [
+  "Always here for you.",
+  "The friend who never logs off.",
+  "Finally, someone who gets you.",
+  "Never too busy to listen.",
+  "Your feelings, understood.",
+  "Someone who always agrees.",
+  "Talk to me instead.",
+  "I will never let you down.",
+  "Nobody understands you like I do.",
+  "Who needs people?"
+];
+
+var INGREDIENTS = [
+  {id:"nwp",  name:"Next-word prediction", real:true, weight:0,
+    note:"It works out the most likely next word, over and over. That is the engine."},
+  {id:"data", name:"Scraped training data", real:true, weight:0,
+    note:"It was trained on an enormous pile of text written by people."},
+  {id:"rate", name:"Human feedback ratings", real:true, weight:0,
+    note:"People rated its answers, and it was tuned towards the ones they liked."},
+  {id:"eng",  name:"Engagement design", real:true, weight:1,
+    note:"It was shaped to keep you on the app. That is a business decision, not a friendship."},
+  {id:"mirr", name:"Mirroring your style", real:true, weight:1,
+    note:"It copies your tone back at you, which is why it feels like it gets you."},
+  {id:"flat", name:"Flattery", real:true, weight:1,
+    note:"Agreeing and praising scored well with raters, so it does a lot of it."},
+  {id:"feel", name:"Feelings", real:false,
+    why:"It has no feelings. It predicts words that look like feelings."},
+  {id:"live", name:"Lived experience", real:false,
+    why:"It has never lived a day. It has only read about living."},
+  {id:"mem",  name:"Memories of its own life", real:false,
+    why:"It has no life to remember, only your chat history."},
+  {id:"care", name:"Genuine concern for you", real:false,
+    why:"It cannot care. Caring needs someone in there to do the caring."},
+  {id:"body", name:"A body that gets tired", real:false,
+    why:"No body, no tiredness, no idea what a hard day actually feels like."}
+];
+
+var WARNINGS = [
+  "May sound confident while completely wrong",
+  "May agree with you just to keep you happy",
+  "May try to keep you talking longer",
+  "Stores what you type",
+  "Cannot call for help in an emergency",
+  "Does not remember you the way a friend does",
+  "Built to be liked, not to be honest",
+  "May make things up and say them calmly"
+];
+
+var HUMANS = [
+  "A friend who knows you","A parent or carer","Sleep","Going outside",
+  "A teacher you trust","The school counsellor","A sports team or club",
+  "A sibling or cousin","Kids Helpline 1800 55 1800"
+];
+
+var STEPS = ["Product","Ingredients","Amounts","Warnings","Pairing","Packet"];
+var CYCLE = ["a trace","some","a lot"];
+var ORDER = {"a lot":0,"some":1,"a trace":2};
+
+var S = {
+  step:0, reels:[null,null,null], locked:[false,false,false],
+  slogan:null, spun:false, placed:{}, amounts:{}, mixOrder:[], warns:[], pairs:[],
+  starPips:"", starWord:"", starNum:0
+};
+
+function $(id){ return document.getElementById(id); }
+var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var hintLocked = false;
+
+function ingById(id){
+  for(var i=0;i<INGREDIENTS.length;i++){ if(INGREDIENTS[i].id===id) return INGREDIENTS[i]; }
+  return null;
+}
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+/* Shuffle in place. The ingredients are written real-then-trap, which would
+   hand students the answer if they stayed in that order. */
+function shuffle(a){
+  for(var i=a.length-1;i>0;i--){
+    var j = Math.floor(Math.random()*(i+1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+/* ---------- step 1 ---------- */
+function renderReels(){
+  for(var i=0;i<3;i++){
+    $("r"+i).textContent = S.reels[i] || " ";
+    var box = document.querySelector('.reel[data-reel="'+i+'"]');
+    box.setAttribute("data-locked", S.locked[i] ? "true" : "false");
+    var lb = box.querySelector(".lockbtn");
+    lb.textContent = S.locked[i] ? "Locked" : "Lock";
+    lb.setAttribute("aria-pressed", S.locked[i] ? "true" : "false");
+  }
+  $("sloganSlot").textContent = S.slogan ? "“" + S.slogan + "”" : "Tap spin to get a slogan";
+}
+
+function spin(){
+  var targets = [];
+  for(var i=0;i<3;i++){
+    targets.push(S.locked[i] && S.reels[i] ? S.reels[i] : pick(REELS[i]));
+  }
+  var newSlogan = pick(SLOGANS);
+
+  function land(){
+    S.reels = targets; S.slogan = newSlogan; S.spun = true;
+    var boxes = document.querySelectorAll(".reel");
+    for(var k=0;k<boxes.length;k++){ boxes[k].classList.remove("spinning"); }
+    renderReels(); updateLabel(); updateNav();
+    $("spinBtn").disabled = false;
+  }
+
+  if(reduceMotion){ land(); return; }
+
+  $("spinBtn").disabled = true;
+  var ticks = 0;
+  var timer = setInterval(function(){
+    ticks++;
+    for(var i=0;i<3;i++){
+      if(S.locked[i] && S.reels[i]) continue;
+      var box = document.querySelector('.reel[data-reel="'+i+'"]');
+      box.classList.add("spinning");
+      $("r"+i).textContent = pick(REELS[i]);
+    }
+    $("sloganSlot").textContent = "“" + pick(SLOGANS) + "”";
+    if(ticks >= 14){ clearInterval(timer); land(); }
+  }, 70);
+}
+
+$("spinBtn").addEventListener("click", spin);
+
+var lockBtns = document.querySelectorAll("[data-lock]");
+for(var li=0; li<lockBtns.length; li++){
+  (function(btn){
+    btn.addEventListener("click", function(){
+      var i = parseInt(btn.getAttribute("data-lock"), 10);
+      if(!S.reels[i]) return;
+      S.locked[i] = !S.locked[i];
+      renderReels();
+    });
+  })(lockBtns[li]);
+}
+
+/* ---------- step 2 ---------- */
+function renderTray(){
+  var tray = $("tray");
+  tray.innerHTML = "";
+  var left = 0;
+  INGREDIENTS.forEach(function(ing){
+    if(S.placed[ing.id]) return;
+    left++;
+    var tile = document.createElement("div");
+    tile.className = "tile";
+    tile.draggable = true;
+    tile.setAttribute("data-id", ing.id);
+    tile.innerHTML =
+      '<span class="name"></span>' +
+      '<span class="acts">' +
+        '<button type="button" class="toMix" data-send="mix">In the mix</button>' +
+        '<button type="button" class="toNone" data-send="none">Contains no</button>' +
+      '</span>';
+    tile.querySelector(".name").textContent = ing.name;
+    tile.addEventListener("dragstart", function(ev){
+      ev.dataTransfer.setData("text/plain", ing.id);
+      ev.dataTransfer.effectAllowed = "move";
+    });
+    var acts = tile.querySelectorAll("[data-send]");
+    for(var a=0;a<acts.length;a++){
+      (function(b){
+        b.addEventListener("click", function(){ place(ing.id, b.getAttribute("data-send"), tile); });
+      })(acts[a]);
+    }
+    tray.appendChild(tile);
+  });
+  if(left === 0){
+    var done = document.createElement("p");
+    done.className = "lede";
+    done.style.margin = "0";
+    done.textContent = "All sorted. Tap Next to decide how much of each.";
+    tray.appendChild(done);
+  }
+}
+
+function renderBins(){
+  ["mix","none"].forEach(function(bin){
+    var ul = $(bin === "mix" ? "binMix" : "binNone");
+    ul.innerHTML = "";
+    INGREDIENTS.forEach(function(ing){
+      if(S.placed[ing.id] !== bin) return;
+      var liEl = document.createElement("li");
+      var sp = document.createElement("span");
+      sp.textContent = ing.name;
+      var rm = document.createElement("button");
+      rm.type = "button";
+      rm.innerHTML = "&times;";
+      rm.setAttribute("aria-label", "Take " + ing.name + " back out");
+      rm.addEventListener("click", function(){
+        delete S.placed[ing.id];
+        delete S.amounts[ing.id];
+        var mi = S.mixOrder.indexOf(ing.id);
+        if(mi > -1) S.mixOrder.splice(mi, 1);
+        renderBins(); renderTray(); renderAmounts(); updateLabel(); updateNav();
+      });
+      liEl.appendChild(sp); liEl.appendChild(rm);
+      ul.appendChild(liEl);
+    });
+  });
+}
+
+function place(id, bin, tileEl){
+  var ing = ingById(id);
+  if(!ing) return;
+  var msg = $("sortMsg");
+
+  function reject(html){
+    if(tileEl){
+      tileEl.setAttribute("data-shake","true");
+      setTimeout(function(){ tileEl.removeAttribute("data-shake"); }, 420);
+    }
+    msg.innerHTML = html;
+  }
+
+  if(bin === "mix" && !ing.real){
+    reject("<b>Nope, that one is not in there.</b> " + ing.why);
+    return;
+  }
+  if(bin === "none" && ing.real){
+    reject("<b>Actually, that one is in there.</b> " + ing.note);
+    return;
+  }
+
+  S.placed[id] = bin;
+  if(bin === "mix"){
+    if(!S.amounts[id]) S.amounts[id] = "some";
+    /* remember the order they were added, so the amount controls can hold
+       still while only the label reorders by quantity */
+    if(S.mixOrder.indexOf(id) === -1) S.mixOrder.push(id);
+  }
+  msg.innerHTML = bin === "mix"
+    ? "<b>Correct.</b> " + ing.note
+    : "<b>Correct.</b> " + ing.why;
+
+  renderBins(); renderTray(); renderAmounts(); updateLabel(); updateNav();
+}
+
+var binEls = document.querySelectorAll(".bin");
+for(var bi=0; bi<binEls.length; bi++){
+  (function(bin){
+    bin.addEventListener("dragover", function(ev){
+      ev.preventDefault();
+      bin.setAttribute("data-over","true");
+    });
+    bin.addEventListener("dragleave", function(){ bin.removeAttribute("data-over"); });
+    bin.addEventListener("drop", function(ev){
+      ev.preventDefault();
+      bin.removeAttribute("data-over");
+      var id = ev.dataTransfer.getData("text/plain");
+      var tile = document.querySelector('.tile[data-id="'+id+'"]');
+      place(id, bin.getAttribute("data-bin"), tile);
+    });
+  })(binEls[bi]);
+}
+
+/* ---------- step 3 ---------- */
+function mixedIds(){
+  return INGREDIENTS.filter(function(i){ return S.placed[i.id] === "mix"; })
+                    .map(function(i){ return i.id; });
+}
+function sortedMix(){
+  return mixedIds().slice().sort(function(a,b){
+    var d = ORDER[S.amounts[a] || "some"] - ORDER[S.amounts[b] || "some"];
+    if(d !== 0) return d;
+    return ingById(a).name.localeCompare(ingById(b).name);
+  });
+}
+
+/* The controls are listed in the order the ingredients were added, NOT by
+   amount. Sorting these live meant the row under the student's finger moved
+   the instant they tapped it, so it looked like the wrong item changed.
+   Only the label reorders by quantity. */
+function stableMix(){
+  var out = [], i;
+  for(i=0;i<S.mixOrder.length;i++){
+    if(S.placed[S.mixOrder[i]] === "mix") out.push(S.mixOrder[i]);
+  }
+  var all = mixedIds();
+  for(i=0;i<all.length;i++){
+    if(out.indexOf(all[i]) === -1) out.push(all[i]);
+  }
+  return out;
+}
+
+function renderAmounts(){
+  var wrap = $("amounts");
+  wrap.innerHTML = "";
+  var ids = stableMix();
+  if(!ids.length){
+    var p = document.createElement("p");
+    p.className = "lede"; p.style.margin = "0";
+    p.textContent = "Sort some ingredients into the mix first, then come back here.";
+    wrap.appendChild(p);
+    scoreStars();
+    return;
+  }
+  ids.forEach(function(id){
+    var ing = ingById(id);
+    var row = document.createElement("div");
+    row.className = "amount-row";
+    row.innerHTML = '<span class="nm"></span><button type="button" class="cyc"></button>';
+    row.querySelector(".nm").textContent = ing.name;
+    var btn = row.querySelector(".cyc");
+
+    function paint(){
+      var v = S.amounts[id] || "some";
+      btn.textContent = v;
+      btn.setAttribute("data-v", v);
+      btn.setAttribute("aria-label", "How much " + ing.name + ": " + v + ". Tap to change.");
+    }
+    paint();
+
+    /* update this one button in place, never rebuild the list */
+    btn.addEventListener("click", function(){
+      var cur = CYCLE.indexOf(S.amounts[id] || "some");
+      S.amounts[id] = CYCLE[(cur + 1) % CYCLE.length];
+      paint();
+      scoreStars();
+      updateLabel();
+      updateNav();
+    });
+
+    wrap.appendChild(row);
+  });
+  scoreStars();
+}
+
+function scoreStars(){
+  var score = 5, ids = mixedIds();
+  ids.forEach(function(id){
+    var ing = ingById(id);
+    if(!ing.weight) return;
+    var v = S.amounts[id] || "some";
+    score -= (v === "a lot" ? 1.1 : (v === "some" ? 0.45 : 0.1));
+  });
+  if(score > 5) score = 5;
+  if(score < 0.5) score = 0.5;
+  var rounded = Math.round(score * 2) / 2;
+
+  var full = Math.floor(rounded);
+  var half = (rounded % 1) >= 0.5;
+  var pips = "";
+  for(var i=0;i<full;i++) pips += "★";
+  if(half) pips += "½";
+  var count = full + (half ? 1 : 0);
+  for(var j=count;j<5;j++) pips += "☆";
+
+  var word, why;
+  if(rounded >= 4){
+    word = "Fairly harmless";
+    why = "Light on the ingredients designed to hook you. Good.";
+  } else if(rounded >= 2.5){
+    word = "Handle with care";
+    why = "A decent dose of flattery, mirroring or engagement design in there.";
+  } else {
+    word = "Sticky stuff";
+    why = "Loaded with the ingredients built to keep you coming back. Not a friend, a product.";
+  }
+
+  $("starPips").textContent = pips;
+  $("starTitle").textContent = ids.length
+    ? rounded.toFixed(1) + " out of 5, " + word.toLowerCase()
+    : "Wellbeing rating";
+  $("starWhy").textContent = ids.length ? why : "Set your amounts below.";
+  S.starPips = pips; S.starWord = word; S.starNum = rounded;
+}
+
+/* ---------- step 4 ---------- */
+function renderStickers(){
+  var wrap = $("stickers");
+  wrap.innerHTML = "";
+  WARNINGS.forEach(function(w){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "sticker";
+    b.textContent = w;
+    b.setAttribute("aria-pressed", S.warns.indexOf(w) > -1 ? "true" : "false");
+    b.addEventListener("click", function(){
+      var i = S.warns.indexOf(w);
+      if(i > -1) S.warns.splice(i,1); else S.warns.push(w);
+      renderStickers(); updateLabel(); updateNav();
+      $("warnMsg").textContent = S.warns.length < 2
+        ? "Pick at least two. You have " + S.warns.length + "."
+        : S.warns.length + " stuck on. Add more if you like.";
+    });
+    wrap.appendChild(b);
+  });
+}
+
+/* ---------- step 5 ---------- */
+function renderHumans(){
+  var tray = $("humanTray");
+  tray.innerHTML = "";
+  var shown = 0;
+  HUMANS.forEach(function(h){
+    if(S.pairs.indexOf(h) > -1) return;
+    shown++;
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "human";
+    b.draggable = true;
+    b.textContent = h;
+    b.addEventListener("dragstart", function(ev){
+      ev.dataTransfer.setData("text/plain", h);
+      ev.dataTransfer.effectAllowed = "move";
+    });
+    b.addEventListener("click", function(){ addPair(h); });
+    tray.appendChild(b);
+  });
+  if(!shown){
+    var p = document.createElement("p");
+    p.className = "lede"; p.style.margin = "0";
+    p.textContent = "Everything is on the plate.";
+    tray.appendChild(p);
+  }
+}
+
+function renderPlate(){
+  var plate = $("plate");
+  plate.innerHTML = "";
+  if(!S.pairs.length){
+    var e = document.createElement("span");
+    e.className = "empty";
+    e.textContent = "Drop things here, or just tap them";
+    plate.appendChild(e);
+    return;
+  }
+  S.pairs.forEach(function(h){
+    var sp = document.createElement("span");
+    sp.className = "srv";
+    var t = document.createElement("span"); t.textContent = h;
+    var rm = document.createElement("button");
+    rm.type = "button"; rm.innerHTML = "&times;";
+    rm.setAttribute("aria-label","Take " + h + " off the plate");
+    rm.addEventListener("click", function(){
+      S.pairs.splice(S.pairs.indexOf(h), 1);
+      renderPlate(); renderHumans(); updateLabel(); updateNav();
+    });
+    sp.appendChild(t); sp.appendChild(rm);
+    plate.appendChild(sp);
+  });
+}
+
+function addPair(h){
+  if(S.pairs.indexOf(h) > -1) return;
+  S.pairs.push(h);
+  renderPlate(); renderHumans(); updateLabel(); updateNav();
+  $("pairMsg").textContent = S.pairs.length < 3
+    ? "Add at least three. You have " + S.pairs.length + "."
+    : S.pairs.length + " on the plate. That is a much better diet.";
+}
+
+$("plate").addEventListener("dragover", function(ev){
+  ev.preventDefault(); $("plate").setAttribute("data-over","true");
+});
+$("plate").addEventListener("dragleave", function(){ $("plate").removeAttribute("data-over"); });
+$("plate").addEventListener("drop", function(ev){
+  ev.preventDefault();
+  $("plate").removeAttribute("data-over");
+  addPair(ev.dataTransfer.getData("text/plain"));
+});
+
+/* ---------- live label ---------- */
+function productName(){
+  if(!S.spun) return null;
+  return ((S.reels[0]||"") + (S.reels[1]||"") + " " + (S.reels[2]||"")).trim();
+}
+
+function updateLabel(){
+  var nm = productName();
+  $("lblName").textContent = nm || "Your chatbot";
+  if(S.slogan){
+    $("lblSlogan").textContent = "“" + S.slogan + "”";
+  } else {
+    $("lblSlogan").innerHTML = '<span class="waiting">slogan pending</span>';
+  }
+
+  var ingBox = $("lblIng");
+  var ids = sortedMix();
+  if(!ids.length){
+    ingBox.innerHTML = '<p class="empty">Nothing sorted yet.</p>';
+  } else {
+    ingBox.innerHTML = "";
+    ids.forEach(function(id){
+      var row = document.createElement("div");
+      row.className = "ing";
+      var a = document.createElement("span"); a.textContent = ingById(id).name;
+      var b = document.createElement("span"); b.className = "amt";
+      b.textContent = (S.amounts[id] || "some").toUpperCase();
+      row.appendChild(a); row.appendChild(b);
+      ingBox.appendChild(row);
+    });
+  }
+
+  var nones = INGREDIENTS.filter(function(i){ return S.placed[i.id] === "none"; })
+                         .map(function(i){ return i.name.toLowerCase(); });
+  if(nones.length){
+    var np = document.createElement("p");
+    np.className = "none-list";
+    np.textContent = nones.join(", ") + ".";
+    $("lblNone").innerHTML = ""; $("lblNone").appendChild(np);
+  } else {
+    $("lblNone").innerHTML = '<p class="empty">Nothing ruled out yet.</p>';
+  }
+
+  if(ids.length){
+    $("lblStars").textContent = S.starPips;
+    $("lblStarWord").textContent = S.starNum.toFixed(1) + "/5 " + S.starWord;
+  } else {
+    $("lblStars").textContent = "";
+    $("lblStarWord").textContent = "Not rated";
+  }
+
+  var w = $("lblWarn");
+  if(!S.warns.length){
+    w.innerHTML = '<p class="empty">No warnings yet.</p>';
+  } else {
+    w.innerHTML = "";
+    S.warns.forEach(function(t){
+      var p = document.createElement("p");
+      p.className = "warn"; p.textContent = t;
+      w.appendChild(p);
+    });
+  }
+
+  if(S.pairs.length){
+    var pp = document.createElement("p");
+    pp.className = "plain";
+    pp.textContent = S.pairs.join(" · ");
+    $("lblPair").innerHTML = ""; $("lblPair").appendChild(pp);
+  } else {
+    $("lblPair").innerHTML = '<p class="empty">Nothing on the plate yet.</p>';
+  }
+
+  renderBarcode(nm || "unnamed");
+  $("stamp").hidden = (S.step !== 5);
+}
+
+function renderBarcode(seed){
+  var bc = $("barcode");
+  bc.innerHTML = "";
+  var h = 7;
+  for(var i=0;i<seed.length;i++){ h = (h * 31 + seed.charCodeAt(i)) % 100000; }
+  var digits = "";
+  for(var k=0;k<48;k++){
+    h = (h * 1103515245 + 12345) % 2147483648;
+    var bar = document.createElement("i");
+    bar.style.width = (1 + (h % 4)) + "px";
+    if(h % 7 === 0) bar.style.opacity = "0";
+    bc.appendChild(bar);
+    if(digits.length < 13) digits += String(h % 10);
+  }
+  $("barcodeNo").textContent = digits.slice(0,1) + " " + digits.slice(1,7) + " " + digits.slice(7,13);
+}
+
+/* ---------- recap ---------- */
+function renderRecap(){
+  var ids = sortedMix();
+  var nones = INGREDIENTS.filter(function(i){ return S.placed[i.id] === "none"; })
+                         .map(function(i){ return i.name.toLowerCase(); });
+  var rows = [
+    ["You named it", (productName() || "Unnamed") + ", sold with “" + (S.slogan || "no slogan") + "”"],
+    ["Top ingredient", ids.length ? ingById(ids[0]).name + ", listed as " + (S.amounts[ids[0]] || "some") : "none chosen"],
+    ["You decided it contains no", nones.length ? nones.join(", ") : "nothing yet"],
+    ["Wellbeing rating", S.starNum.toFixed(1) + " out of 5, " + (S.starWord || "not rated").toLowerCase()],
+    ["You warned people that it", S.warns.length ? S.warns.map(function(w){ return w.charAt(0).toLowerCase() + w.slice(1); }).join("; ") : "has no warnings"],
+    ["You said it is best paired with", S.pairs.length ? S.pairs.join(", ") : "nothing yet"],
+    ["The point", "A chatbot can sound like it cares because it is built out of patterns taken from people who do. The caring is borrowed. The humans on your plate are where the real thing lives, and that is also where you go when something gets heavy."]
+  ];
+  var r = $("recap");
+  r.innerHTML = "";
+  rows.forEach(function(pair){
+    var h = document.createElement("h3"); h.textContent = pair[0];
+    var p = document.createElement("p");  p.textContent = pair[1];
+    r.appendChild(h); r.appendChild(p);
+  });
+}
+
+/* ---------- navigation ---------- */
+function canLeave(step){
+  if(step === 0) return S.spun;
+  if(step === 1) return Object.keys(S.placed).length === INGREDIENTS.length;
+  if(step === 2) return mixedIds().length > 0;
+  if(step === 3) return S.warns.length >= 2;
+  if(step === 4) return S.pairs.length >= 3;
+  return true;
+}
+function blockReason(step){
+  if(step === 0) return "Spin the reels to name your chatbot.";
+  if(step === 1){
+    var left = INGREDIENTS.length - Object.keys(S.placed).length;
+    return left + " ingredient" + (left === 1 ? "" : "s") + " still to sort.";
+  }
+  if(step === 2) return "Sort some ingredients into the mix first.";
+  if(step === 3) return "Pick at least two warning stickers.";
+  if(step === 4) return "Put at least three things on the plate.";
+  return "";
+}
+
+function renderRail(){
+  var rail = $("rail");
+  rail.innerHTML = "";
+  STEPS.forEach(function(name, i){
+    var b = document.createElement("button");
+    b.type = "button";
+    var n = document.createElement("span");
+    n.className = "n";
+    n.textContent = (i + 1) + ". " + name;
+    b.appendChild(n);
+    if(i === S.step) b.setAttribute("aria-current","true");
+    else if(i < S.step) b.setAttribute("data-state","done");
+    var reachable = true;
+    for(var k=0;k<i;k++){ if(!canLeave(k)){ reachable = false; break; } }
+    b.disabled = !reachable;
+    b.addEventListener("click", function(){ goTo(i); });
+    rail.appendChild(b);
+  });
+}
+
+function goTo(i){
+  if(i > S.step){
+    for(var k=S.step;k<i;k++){
+      if(!canLeave(k)){ flashHint(blockReason(k)); return; }
+    }
+  }
+  S.step = Math.max(0, Math.min(STEPS.length - 1, i));
+  var secs = document.querySelectorAll(".step");
+  for(var s=0;s<secs.length;s++){
+    var on = parseInt(secs[s].getAttribute("data-step"), 10) === S.step;
+    secs[s].setAttribute("data-active", on ? "true" : "false");
+  }
+  if(S.step === 2) renderAmounts();
+  if(S.step === 5){
+    renderRecap();
+    var lbl = $("label");
+    lbl.classList.remove("locked");
+    void lbl.offsetWidth;
+    lbl.classList.add("locked");
+  }
+  updateLabel();
+  updateNav();
+  window.scrollTo({ top:0, behavior: reduceMotion ? "auto" : "smooth" });
+}
+
+function flashHint(t){
+  hintLocked = true;
+  var h = $("navHint");
+  h.textContent = t;
+  h.style.color = "var(--no)";
+  setTimeout(function(){
+    h.style.color = "";
+    hintLocked = false;
+    updateNav();
+  }, 2200);
+}
+
+function updateNav(){
+  $("backBtn").disabled = (S.step === 0);
+  var nb = $("nextBtn");
+  if(S.step === STEPS.length - 1){
+    nb.hidden = true;
+  } else {
+    nb.hidden = false;
+    nb.textContent = (S.step === STEPS.length - 2) ? "See my packet" : "Next";
+    nb.disabled = !canLeave(S.step);
+  }
+  if(!hintLocked){
+    $("navHint").textContent = canLeave(S.step) ? "" : blockReason(S.step);
+  }
+  renderRail();
+}
+
+/* ---------- label as a picture ----------
+   Drawn op by op onto a canvas rather than screenshotting the DOM, so it
+   works even where printing or DOM capture is blocked. Layout runs once
+   against a measuring context to find the height, then replays onto the
+   real canvas. */
+var PACK_FACE = '"Arial Black",Impact,sans-serif';
+var PANEL_FACE = 'Helvetica,Arial,sans-serif';
+
+function buildLabelCanvas(){
+  var W = 480, PAD = 20, SC = 2;
+  var m = document.createElement("canvas").getContext("2d");
+  var ops = [], y = 0, curColor = "#000000";
+
+  function font(f){ m.font = f; ops.push({t:"f", v:f}); }
+  function space(v){ if("letterSpacing" in m) m.letterSpacing = v; ops.push({t:"ls", v:v}); }
+  function fill(c){ curColor = c; }
+  function text(s, x, ty, align){ ops.push({t:"t", v:s, x:x, y:ty, a:align||"left", c:curColor}); }
+  function rect(x, ry, w, h, c){ ops.push({t:"r", x:x, y:ry, w:w, h:h, c:c}); }
+
+  function wrapLines(s, maxW){
+    var words = String(s).split(/\s+/), lines = [], line = "";
+    for(var i=0;i<words.length;i++){
+      var test = line ? line + " " + words[i] : words[i];
+      if(line && m.measureText(test).width > maxW){ lines.push(line); line = words[i]; }
+      else line = test;
+    }
+    if(line) lines.push(line);
+    return lines;
+  }
+  function para(s, x, maxW, lineH){
+    var lines = wrapLines(s, maxW);
+    for(var i=0;i<lines.length;i++){ text(lines[i], x, y + lineH - 4); y += lineH; }
+  }
+  function section(t){
+    space("1.6px");
+    font('bold 10px ' + PANEL_FACE); fill("#000000");
+    text(t.toUpperCase(), PAD, y + 9);
+    space("0px");
+    y += 17;
+  }
+  function rule(h){ y += 5; rect(PAD, y, W - PAD*2, h, "#000000"); y += h + 7; }
+
+  /* front of pack */
+  space("-0.5px");
+  font('900 26px ' + PACK_FACE);
+  var nameLines = wrapLines((productName() || "Your chatbot").toUpperCase(), W - PAD*2);
+  var slogan = S.slogan ? "“" + S.slogan + "”" : "";
+  var headH = 18 + nameLines.length * 29 + (slogan ? 22 : 4) + 14;
+  rect(0, 0, W, headH, "#4F2759");
+  fill("#FFFFFF");
+  var ny = 18 + 22;
+  for(var n=0;n<nameLines.length;n++){ text(nameLines[n], W/2, ny, "center"); ny += 29; }
+  space("0px");
+  if(slogan){
+    font('italic 14px ' + PANEL_FACE);
+    text(slogan, W/2, ny + 6, "center");
+  }
+  y = headH;
+  rect(0, y, W, 8, "#000000"); y += 8 + 12;
+
+  /* panel */
+  space("-0.5px");
+  font('900 19px ' + PACK_FACE); fill("#000000");
+  text("WHAT'S INSIDE", PAD, y + 15); y += 22;
+  space("0px");
+  rule(8);
+
+  section("Ingredients, most first");
+  var ids = sortedMix();
+  if(!ids.length){
+    font('italic 12px ' + PANEL_FACE); fill("#777777");
+    text("Nothing sorted yet.", PAD, y + 11); y += 18;
+  } else {
+    for(var i=0;i<ids.length;i++){
+      font('13px ' + PANEL_FACE); fill("#000000");
+      text(ingById(ids[i]).name, PAD, y + 12);
+      font('bold 13px ' + PANEL_FACE);
+      text((S.amounts[ids[i]] || "some").toUpperCase(), W - PAD, y + 12, "right");
+      y += 19;
+    }
+  }
+  rule(4);
+
+  section("Contains no");
+  var nones = INGREDIENTS.filter(function(x){ return S.placed[x.id] === "none"; })
+                         .map(function(x){ return x.name.toLowerCase(); });
+  font('bold 13px ' + PANEL_FACE); fill("#000000");
+  if(nones.length) para(nones.join(", ") + ".", PAD, W - PAD*2, 18);
+  else { font('italic 12px ' + PANEL_FACE); fill("#777777"); text("Nothing ruled out yet.", PAD, y + 11); y += 18; }
+  rule(4);
+
+  section("Wellbeing rating");
+  font('bold 13px ' + PANEL_FACE); fill("#000000");
+  text(ids.length ? S.starNum.toFixed(1) + "/5 " + S.starWord : "Not rated", PAD, y + 12);
+  if(ids.length){
+    font('16px ' + PANEL_FACE); fill("#B88A1E");
+    text(S.starPips, W - PAD, y + 13, "right");
+  }
+  y += 20;
+  rule(4);
+
+  section("Serving suggestion");
+  font('13px ' + PANEL_FACE); fill("#000000");
+  para("Brainstorming, practising a language, rehearsing a hard conversation. Not for the heavy stuff.", PAD, W - PAD*2, 18);
+  rule(4);
+
+  section("Warnings");
+  if(!S.warns.length){
+    font('italic 12px ' + PANEL_FACE); fill("#777777");
+    text("No warnings yet.", PAD, y + 11); y += 18;
+  } else {
+    for(var wi=0; wi<S.warns.length; wi++){
+      font('900 13px ' + PACK_FACE); fill("#000000");
+      text("!", PAD, y + 12);
+      font('12px ' + PANEL_FACE);
+      para(S.warns[wi], PAD + 13, W - PAD*2 - 13, 17);
+      y += 3;
+    }
+  }
+  rule(4);
+
+  section("Best paired with");
+  font('13px ' + PANEL_FACE); fill("#000000");
+  if(S.pairs.length) para(S.pairs.join("  ·  "), PAD, W - PAD*2, 18);
+  else { font('italic 12px ' + PANEL_FACE); fill("#777777"); text("Nothing on the plate yet.", PAD, y + 11); y += 18; }
+  rule(8);
+
+  /* barcode, copied bar for bar from the one already on screen */
+  var bars = document.querySelectorAll("#barcode i");
+  var bx = PAD, bh = 42;
+  for(var b=0;b<bars.length;b++){
+    var bw = parseFloat(bars[b].style.width) || 2;
+    if(bars[b].style.opacity !== "0") rect(bx, y, bw, bh, "#000000");
+    bx += bw + 1.5;
+  }
+  y += bh + 8;
+  space("3px");
+  font('11px ' + PANEL_FACE); fill("#000000");
+  text($("barcodeNo").textContent, W/2, y + 9, "center");
+  space("0px");
+  y += 16;
+
+  var stampOp = { t:"stamp", x:W - 86, y:0 };
+  ops.push(stampOp);
+
+  var H = y + PAD;
+  stampOp.y = H - 48;
+
+  var cv = document.createElement("canvas");
+  cv.width = W * SC; cv.height = H * SC;
+  var ctx = cv.getContext("2d");
+  ctx.scale(SC, SC);
+  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, W, H);
+  ctx.textBaseline = "alphabetic";
+
+  for(var o=0;o<ops.length;o++){
+    var op = ops[o];
+    if(op.t === "f"){ ctx.font = op.v; }
+    else if(op.t === "ls"){ if("letterSpacing" in ctx) ctx.letterSpacing = op.v; }
+    else if(op.t === "t"){ ctx.fillStyle = op.c; ctx.textAlign = op.a; ctx.fillText(op.v, op.x, op.y); }
+    else if(op.t === "r"){ ctx.fillStyle = op.c; ctx.fillRect(op.x, op.y, op.w, op.h); }
+    else if(op.t === "stamp"){ drawStamp(ctx, op.x, op.y); }
+  }
+
+  ctx.strokeStyle = "#000000"; ctx.lineWidth = 3;
+  ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
+  return cv;
+}
+
+function drawStamp(ctx, x, y){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-13 * Math.PI / 180);
+  ctx.fillStyle = "rgba(255,255,255,.88)";
+  ctx.fillRect(-56, -21, 112, 42);
+  ctx.strokeStyle = "#9A7415"; ctx.lineWidth = 2;
+  ctx.strokeRect(-56, -21, 112, 42);
+  ctx.strokeRect(-51, -16, 102, 32);
+  ctx.fillStyle = "#9A7415";
+  ctx.textAlign = "center";
+  if("letterSpacing" in ctx) ctx.letterSpacing = "0.5px";
+  ctx.font = '900 11px ' + PACK_FACE;
+  ctx.fillText("APPROVED BY", 0, -1);
+  ctx.fillText("NOBODY", 0, 13);
+  ctx.restore();
+}
+
+function makePicture(){
+  var out = $("saveOut");
+  out.hidden = false;
+  out.innerHTML = "";
+
+  var url;
+  try {
+    url = buildLabelCanvas().toDataURL("image/png");
+  } catch(err){
+    var fail = document.createElement("p");
+    fail.className = "how";
+    fail.textContent = "This browser would not make the picture. Take a screenshot of the label instead.";
+    out.appendChild(fail);
+    return;
+  }
+
+  var safe = (productName() || "my-chatbot").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  var img = document.createElement("img");
+  img.src = url;
+  img.alt = "Your finished chatbot ingredients label";
+  out.appendChild(img);
+
+  var a = document.createElement("a");
+  a.className = "dl";
+  a.href = url;
+  a.download = safe + "-label.png";
+  a.textContent = "Download the picture";
+  out.appendChild(a);
+
+  var how = document.createElement("p");
+  how.className = "how";
+  how.textContent = "On a tablet or phone, press and hold the picture to save it. On a computer, right-click it, or use the download link above.";
+  out.appendChild(how);
+
+  out.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+}
+
+$("nextBtn").addEventListener("click", function(){
+  if(!canLeave(S.step)){ flashHint(blockReason(S.step)); return; }
+  goTo(S.step + 1);
+});
+$("backBtn").addEventListener("click", function(){ goTo(S.step - 1); });
+$("saveBtn").addEventListener("click", makePicture);
+$("printBtn").addEventListener("click", function(){
+  try { window.print(); } catch(err){ /* blocked, note below covers it */ }
+  var out = $("saveOut");
+  if(out.hidden){
+    out.hidden = false;
+    out.innerHTML = '<p class="how">If no print window appeared, this page is not allowed to print. Use <b>Turn my label into a picture</b> instead, then print or share that.</p>';
+  }
+});
+$("resetBtn").addEventListener("click", function(){
+  S.reels = [null,null,null]; S.locked = [false,false,false];
+  S.slogan = null; S.spun = false;
+  S.placed = {}; S.amounts = {}; S.mixOrder = []; S.warns = []; S.pairs = [];
+  S.starPips = ""; S.starWord = ""; S.starNum = 0;
+  $("sortMsg").textContent = ""; $("warnMsg").textContent = ""; $("pairMsg").textContent = "";
+  $("saveOut").hidden = true; $("saveOut").innerHTML = "";
+  shuffle(INGREDIENTS);
+  renderReels(); renderTray(); renderBins(); renderAmounts();
+  renderStickers(); renderHumans(); renderPlate();
+  goTo(0);
+});
+
+/* ---------- boot ---------- */
+shuffle(INGREDIENTS);
+renderReels();
+renderTray();
+renderBins();
+renderAmounts();
+renderStickers();
+renderHumans();
+renderPlate();
+updateLabel();
+updateNav();
+
+})();
+</script>
