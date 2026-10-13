@@ -39,7 +39,7 @@ service line.
 Served via GitHub Pages, then embedded in Schoolbox with an iframe:
 
 ```html
-<iframe src="https://wesdlpteam.github.io/empathy-engineered/"
+<iframe src="https://wesdlpteam.github.io/empathy-engineered-/"
         width="100%" height="900"
         style="border:1px solid #ccc; border-radius:8px;"
         title="What's really in this chatbot?"></iframe>
